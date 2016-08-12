@@ -50,7 +50,9 @@ class Portfolio {
     judge(ticker) {
         if(ticker.history[2] < ticker.history[1] &&
            ticker.history[1] < ticker.history[0]) {
-            this.buy(Math.floor(this.cash / ticker.history[0]), ticker)
+            if(this.cash >= ticker.history[0]) {
+                this.buy(Math.floor(this.cash / ticker.history[0]), ticker)
+            }
         } else {
             this.dump(ticker)
         }
