@@ -21,8 +21,11 @@ class Portfolio {
     _buy(quantity, ticker) {
         ticker.quantity += quantity
         ticker.value += quantity * ticker.history[0]
-        this.cash -= quantity * ticker.history[0]
+        this.cashValue -= quantity * ticker.history[0]
+        this.stockValue += quantity * ticker.history[0]
+        
         this.print(ticker)
+        this.recalculate()
     }
     
     buy(quantity, ticker) {
@@ -33,8 +36,11 @@ class Portfolio {
     _sell(quantity, ticker) {
         ticker.quantity -= quantity
         ticker.value -= quantity * ticker.history[0]
-        this.cash += quantity * ticker.history[0]
+        this.cashValue += quantity * ticker.history[0]
+        this.stockValue -= quantity * ticker.history[0]
+        
         this.print(ticker)
+        this.recalculate()
     }
     
     sell(quantity, ticker) {
@@ -61,7 +67,9 @@ class Portfolio {
     constructor() {
         this.tickers = []
         this.portfolio = {}
-        this.cash = 100
+        this.cashValue = 100
+        this.totalValue = 0;
+        this.stockValue = 0;
         this.interval = setInterval(this.updateTickers.bind(this), 1000)
     }
     
@@ -77,6 +85,11 @@ class Portfolio {
                 }
             })
         })
+    }
+    
+    recalculate() {
+        this.totalValue = this.cashValue + this.stockValue
+        console.log("Total Value: " + this.totalValue);
     }
     
     kill() {
