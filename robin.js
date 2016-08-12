@@ -12,44 +12,100 @@ var symbol = process.argv[2];
 //});
 
 var rh = Robinhood();
-rh.quote_data(symbol, print);
+
+class Portfolio {
+    print(ticker) {
+        console.log(ticker.symbol + "\t" + ticker.value)
+    }
+    
+    _buy(quantity, ticker) {
+        ticker.quantity += quantity
+        ticker.value += quantity * ticker.history[0]
+        this.cash -= quantity * ticker.history[0]
+        this.print(ticker)
+    }
+    
+    buy(quantity, ticker) {
+        console.log("BUY")
+        this._buy(quantity, ticker)
+    }
+    
+    _sell(quantity, ticker) {
+        ticker.quantity -= quantity
+        ticker.value -= quantity * ticker.history[0]
+        this.cash += quantity * ticker.history[0]
+        this.print(ticker)
+    }
+    
+    sell(quantity, ticker) {
+        console.log("SELL")
+        _sell(quantity, ticker)
+    }
+    
+    dump(ticker) {
+        console.log("DUMP")
+        this._sell(ticker.quantity, ticker)
+    }
+
+    judge(ticker) {
+        if(ticker.history[2] < ticker.history[1] &&
+           ticker.history[1] < ticker.history[0]) {
+            this.buy(Math.floor(this.cash / ticker.history[0]), ticker)
+        } else {
+            this.dump(ticker)
+        }
+    }
+    
+    constructor() {
+        this.tickers = []
+        this.portfolio = {}
+        this.cash = 100
+        this.interval = setInterval(this.updateTickers.bind(this), 1000)
+    }
+    
+    addTicker(ticker) {
+        this.tickers.push(ticker)
+    }
+    
+    updateTickers() {
+        this.tickers.forEach((ticker) => {
+            ticker.update(() => {
+                if(ticker.history.length >= 3) {
+                    this.judge(ticker)
+                }
+            })
+        })
+    }
+    
+    kill() {
+        clearInterval(this.interval)
+    }
+}
 
 class Ticker {
-	
-	judge() {
-        if(this.history[2] < this.history[1]) {
-            if(this.historyhis.history[1] < this.history[0]) {
-				console.log("BUY")
-			} else {
-				// SELL
-			}
-		} else {
-			// SELL
-		}
-	}
-
-    handleQuoteResponse(error, response, body) {
+    handleQuoteResponse(body) {
 		var lastPrice = body.results[0].last_trade_price
         this.history.unshift(lastPrice)
         this.history = this.history.slice(0, 3)
         console.log(this.history)
-		if(this.history.length >= 3) {
-			this.judge()
-		}
 		console.log(lastPrice)
 	}
 	
 	constructor(symbol) {
+        this.quantity = 0
+        this.value = 0
         this.history = []
 		this.symbol = symbol
-		this.interval = setInterval(() => {
-        	rh.quote_data(this.symbol, this.handleQuoteResponse.bind(this));
-		}, 1000)
-	}
-
-	kill() {
-		clearInterval(this.interval)
-	}
+    }
+	
+    update(callback) {
+        rh.quote_data(this.symbol, (error, response, body) => {
+            this.handleQuoteResponse(body)
+            callback()
+        });
+    }
 }
 
 var tick = new Ticker("goog");
+var port = new Portfolio();
+port.addTicker(tick)
