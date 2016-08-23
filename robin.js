@@ -1,8 +1,8 @@
-var Robinhood = require("robinhood");
-require("timers");
-var print = function(err, res, body) {console.log(body);};
+var Robinhood = require("robinhood")
+require("timers")
+var print = function(err, res, body) {console.log(body)}
 
-var symbol = process.argv[2];
+var symbol = process.argv[2]
 
 //var rh = Robinhood({"username": "manconeg", "password": "Fuk1tree!!"}, function() {
 //	rh.user(print);
@@ -11,116 +11,74 @@ var symbol = process.argv[2];
 //	rh.investment_profile(print);
 //});
 
-var rh = Robinhood();
 
-class Portfolio {
-    print(ticker) {
-        console.log(ticker.symbol + "\t" + ticker.value)
-    }
-    
-    _buy(quantity, ticker) {
-        ticker.quantity += quantity
-        ticker.value += quantity * ticker.history[0]
-        this.cashValue -= quantity * ticker.history[0]
-        this.stockValue += quantity * ticker.history[0]
-        
-        this.print(ticker)
-        this.recalculate()
-    }
-    
-    buy(quantity, ticker) {
-        console.log("BUY")
-        this._buy(quantity, ticker)
-    }
-    
-    _sell(quantity, ticker) {
-        ticker.quantity -= quantity
-        ticker.value -= quantity * ticker.history[0]
-        this.cashValue += quantity * ticker.history[0]
-        this.stockValue -= quantity * ticker.history[0]
-        
-        this.print(ticker)
-        this.recalculate()
-    }
-    
-    sell(quantity, ticker) {
-        console.log("SELL")
-        _sell(quantity, ticker)
-    }
-    
-    dump(ticker) {
-        console.log("DUMP")
-        this._sell(ticker.quantity, ticker)
-    }
+var Portfolio = require("./Portfolio.js")
 
-    judge(ticker) {
-        if(ticker.history[2] < ticker.history[1] &&
-           ticker.history[1] < ticker.history[0]) {
-            if(this.cash >= ticker.history[0]) {
-                this.buy(Math.floor(this.cash / ticker.history[0]), ticker)
-            }
-        } else {
-            this.dump(ticker)
-        }
-    }
-    
-    constructor() {
-        this.tickers = []
-        this.portfolio = {}
-        this.cashValue = 100
-        this.totalValue = 0;
-        this.stockValue = 0;
-        this.interval = setInterval(this.updateTickers.bind(this), 1000)
-    }
-    
-    addTicker(ticker) {
-        this.tickers.push(ticker)
-    }
-    
-    updateTickers() {
-        this.tickers.forEach((ticker) => {
-            ticker.update(() => {
-                if(ticker.history.length >= 3) {
-                    this.judge(ticker)
-                }
-            })
+var Ticker = require("./Ticker.js")
+
+
+
+
+
+
+
+
+
+
+
+var rh = new Robinhood()
+var EventEmitter = require('events').EventEmitter;
+var RobinhoodStream = class RobinhoodStream extends EventEmitter {
+  stop() {
+    clearInterval(this.interval)
+  }
+
+  start() {
+    this.interval = setInterval(this._getQuote.bind(this), 5000)
+  }
+
+  _getQuote() {
+    rh.quote_data(this.symbolsString, (error, response, body) => {
+      if(error) {
+        this.emit('error', error)
+      } else {
+        body.results.forEach((ticker) => {
+          this.emit('data', ticker)
         })
-    }
-    
-    recalculate() {
-        this.totalValue = this.cashValue + this.stockValue
-        console.log("Total Value: " + this.totalValue);
-    }
-    
-    kill() {
-        clearInterval(this.interval)
-    }
+      }
+    })
+  }
+
+  constructor(symbols) {
+    super()
+    this.symbolsString = typeof symbols === "object" ? symbols.join(',') : symbols
+  }
 }
 
-class Ticker {
-    handleQuoteResponse(body) {
-		var lastPrice = body.results[0].last_trade_price
-        this.history.unshift(lastPrice)
-        this.history = this.history.slice(0, 3)
-        console.log(this.history)
-		console.log(lastPrice)
-	}
-	
-	constructor(symbol) {
-        this.quantity = 0
-        this.value = 0
-        this.history = []
-		this.symbol = symbol
-    }
-	
-    update(callback) {
-        rh.quote_data(this.symbol, (error, response, body) => {
-            this.handleQuoteResponse(body)
-            callback()
-        });
-    }
-}
 
-var tick = new Ticker("goog");
-var port = new Portfolio();
-port.addTicker(tick)
+var Rx = require('Rx')
+var rhs = new RobinhoodStream(['goog', 'gevo'])
+rhs.start()
+
+
+Rx.Observable.fromEvent(
+  rhs,
+  'data')
+  .subscribe(
+    function (quote) {
+      console.log('symbol: ' + quote.symbol)
+    },
+    function (err) {
+      console.log('Error: ' + err)
+    },
+    function () {
+      console.log('Completed')
+    })
+
+
+
+//
+// var tickerUpdater = new TickerUpdater()
+// var tick = new Ticker("gevo")
+// var port = new Portfolio(rh)
+// port.addTicker(tick)
