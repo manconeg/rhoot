@@ -1,43 +1,45 @@
-class Portfolio {
-    print(ticker) {
-        console.log(ticker.symbol + "\t" + ticker.value)
-    }
+var debug = require('debug')('portfolio')
+var Rx = require('Rx')
 
+module.exports = class Portfolio {
     _buy(quantity, ticker) {
         var cashDifference = ticker.changeQuantityBy(quantity)
         this.cashValue += cashDifference
     }
 
     buy(quantity, ticker) {
-        console.log("BUY")
+        debug("BUY")
         this._buy(quantity, ticker)
     }
 
     _sell(quantity, ticker) {
-	     var cashDifference = ticker.changeQuantityBy(-1 * quantity)
-       this.cashValue += cashDifference
+        var cashDifference = ticker.changeQuantityBy(quantity > 0 ? -1 * quantity : quantity)
+        this.cashValue += cashDifference
     }
 
     sell(quantity, ticker) {
-        console.log("SELL")
+        debug("SELL")
         _sell(quantity, ticker)
     }
 
     dump(ticker) {
-        console.log("DUMP")
+        debug("DUMP")
         this._sell(ticker.quantity, ticker)
     }
 
     judge(ticker) {
+        if(!ticker.initialized) return
+        
         if(ticker.history[2] <= ticker.history[1] &&
           ticker.history[1] <= ticker.history[0]) {
             if(this.cashValue >= ticker.history[0]) {
                 this.buy(Math.floor(this.cashValue / ticker.history[0]), ticker)
             }
-            console.log("judging decent")
+            debug("judging decent")
         } else {
             this.dump(ticker)
         }
+        this._recalculate()
     }
 
     constructor() {
@@ -46,40 +48,32 @@ class Portfolio {
         this.cashValue = 100
         this.totalValue = 0;
         this.stockValue = 0;
-        this.interval = setInterval(this.updateTickers.bind(this), 1000)
     }
 
     addTicker(ticker) {
         this.tickers.push(ticker)
+        
+        Rx.Observable.fromEvent(
+            ticker,
+            'priceUpdate').subscribe(
+                () => this.judge(ticker),
+                err => debug(err),
+                () => debug('complete'))
     }
 
-    updateTickers() {
-        this.tickers.forEach((ticker) => {
-            ticker.update(() => {
-                if(ticker.history.length >= 3) {
-                    this.judge(ticker)
-                }
-            })
-        })
-        this.recalculate()
-    }
-
-    recalculate() {
-    	this.stockValue = 0
+    _recalculate() {
+        this.stockValue = 0
 
     	this.tickers.forEach((ticker) => {
-		      this.stockValue += ticker.value
-      })
-
-      this.totalValue = this.cashValue + this.stockValue
-      console.log("Cash: " + this.cashValue);
-      console.log("Stock: " + this.stockValue);
-      console.log("Total: " + this.totalValue);
-    }
-
-    kill() {
-        clearInterval(this.interval)
+            if(ticker.initialized) {
+                debug(ticker.getLastPrice())
+                this.stockValue += ticker.value
+            }
+        })
+        
+        this.totalValue = this.cashValue + this.stockValue
+        debug("Cash: " + this.cashValue);
+        debug("Stock: " + this.stockValue);
+        debug("Total: " + this.totalValue);
     }
 }
-
-module.exports = Portfolio;
