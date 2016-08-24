@@ -1,9 +1,12 @@
+var debug = require('debug')('ticker')
 var EventEmitter = require('events').EventEmitter
 
 module.exports = class Ticker extends EventEmitter {
     setNewPrice(newPrice) {
         newPrice = newPrice * 1
-        console.log(this.symbol + " " + newPrice)
+        
+        debug(this.symbol + " " + newPrice)
+        
         this.history.unshift(newPrice)
         this.history = this.history.slice(0, 10)
         this.initialized = true
