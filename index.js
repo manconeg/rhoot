@@ -1,8 +1,8 @@
 var symbol = process.argv[2]
 
-var Portfolio = require("./Portfolio.js")
-var RobinhoodStream = require("./RobinhoodStream.js")
-var TickerFactory = require("./TickerFactory.js")
+var Portfolio = require("./lib/Portfolio.js")
+var RobinhoodStream = require("./lib/RobinhoodStream.js")
+var TickerFactory = require("./lib/TickerFactory.js")
 
 var robinhoodStream = new RobinhoodStream(['goog', 'gevo'])
 
